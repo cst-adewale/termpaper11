@@ -86,6 +86,7 @@
   margin-bottom: 0.15rem;
   font-size: 0.9rem;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .left-sidebar.collapsed .nav-link {
