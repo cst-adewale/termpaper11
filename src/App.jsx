@@ -3,6 +3,9 @@ import { getNextQuestion, updateInference } from './logic/doctorLogic'
 import Dashboard from './Dashboard'
 import Auth from './components/Auth'
 import { supabase } from './supabase'
+import Settings from './components/Settings'
+import Help from './components/Help'
+import Documents from './components/Documents'
 import './App.css'
 
 function App() {
@@ -18,6 +21,8 @@ function App() {
   const [isFinishing, setIsFinishing] = useState(false)
   const [inputPrompt, setInputPrompt] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [isListening, setIsListening] = useState(false)
 
   const chatEndRef = useRef(null)
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -52,6 +57,36 @@ function App() {
     setInputPrompt('')
   }
 
+  const speak = (text) => {
+    if (!voiceEnabled || !window.speechSynthesis) return
+    const utterance = new SpeechSynthesisUtterance(text)
+    const voices = window.speechSynthesis.getVoices()
+    const britishVoice = voices.find(v => v.lang === 'en-GB') || voices[0]
+    if (britishVoice) utterance.voice = britishVoice
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const handleVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Browser does not support Speech Recognition")
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.start()
+    setIsListening(true)
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setInputPrompt(transcript)
+      setIsListening(false)
+    }
+
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+  }
+
   const handleResponse = async (nodeName, value) => {
     const newEvidence = { ...evidence, [nodeName]: value }
     setEvidence(newEvidence)
@@ -61,12 +96,16 @@ function App() {
     const nextNode = getNextQuestion(newEvidence)
     if (nextNode) {
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'bot', text: getQuestionText(nextNode), node: nextNode }])
+        const text = getQuestionText(nextNode)
+        setMessages(prev => [...prev, { role: 'bot', text, node: nextNode }])
+        speak(text)
       }, 700)
     } else {
       setIsFinishing(true)
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: 'bot', text: "I've analyzed all signals. View the results in the assessment panel." }])
+        const text = "I've analyzed all signals. View the results in the assessment panel."
+        setMessages(prev => [...prev, { role: 'bot', text }])
+        speak(text)
       }, 700)
     }
   }
@@ -85,21 +124,32 @@ function App() {
     return <Auth />
   }
 
-  if (view === 'dashboard') {
-    return <Dashboard symptoms={evidence} diagnosis={[]} onBack={() => setView('chat')} />;
-  }
+  if (view === 'dashboard') return <Dashboard symptoms={evidence} diagnosis={[]} onBack={() => setView('chat')} />
+  if (view === 'settings') return (
+    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>{renderSidebar()}</aside>
+      <main className="main-content" style={{ overflowY: 'auto' }}><Settings /></main>
+    </div>
+  )
+  if (view === 'help') return (
+    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>{renderSidebar()}</aside>
+      <main className="main-content" style={{ overflowY: 'auto' }}><Help /></main>
+    </div>
+  )
+  if (view === 'documents') return (
+    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>{renderSidebar()}</aside>
+      <main className="main-content" style={{ overflowY: 'auto' }}><Documents /></main>
+    </div>
+  )
 
   const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || `User ${session.user.id.slice(0, 5)}`
   const userAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.id}&name=${encodeURIComponent(userName)}`
 
-  return (
-    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-        {isMenuOpen ? '✕' : '☰'}
-      </button>
-
-      {/* ── LEFT SIDEBAR ── */}
-      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+  function renderSidebar() {
+    return (
+      <>
         <div className="logo-section">
           <div className="logo-pause-small">
             <div className="bar"></div>
@@ -118,15 +168,15 @@ function App() {
         {!isSidebarCollapsed && (
           <div className="search-bar">
             <span style={{ marginRight: '8px' }}>🔍</span>
-            <input type="text" placeholder="Search" style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem' }} />
+            <input type="text" placeholder="Search" style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem', borderRadius: '30px' }} />
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>⌘K</span>
           </div>
         )}
 
         <nav className="sidebar-nav">
-          <a href="#" className="nav-link active"><span>💬</span> {!isSidebarCollapsed && 'AI Chat'}</a>
-          <a href="#" className="nav-link"><span>📄</span> {!isSidebarCollapsed && 'Documents'}</a>
-          <a href="#" className="nav-link"><span>🕒</span> {!isSidebarCollapsed && 'History'}</a>
+          <a onClick={() => setView('chat')} className={`nav-link ${view === 'chat' ? 'active' : ''}`}><span>💬</span> {!isSidebarCollapsed && 'AI Chat'}</a>
+          <a onClick={() => setView('documents')} className={`nav-link ${view === 'documents' ? 'active' : ''}`}><span>📄</span> {!isSidebarCollapsed && 'Documents'}</a>
+          <a onClick={() => setView('history')} className={`nav-link ${view === 'history' ? 'active' : ''}`}><span>🕒</span> {!isSidebarCollapsed && 'History'}</a>
 
           {!isSidebarCollapsed && history.length > 0 && (
             <div className="history-list" style={{ marginTop: '0.5rem', paddingLeft: '2rem' }}>
@@ -139,12 +189,21 @@ function App() {
           )}
 
           {!isSidebarCollapsed && <div style={{ marginTop: '1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Settings & Help</div>}
-          <a href="#" className="nav-link"><span>⚙️</span> {!isSidebarCollapsed && 'Settings'}</a>
-          <a href="#" className="nav-link"><span>❓</span> {!isSidebarCollapsed && 'Help'}</a>
+          <a onClick={() => setView('settings')} className={`nav-link ${view === 'settings' ? 'active' : ''}`}><span>⚙️</span> {!isSidebarCollapsed && 'Settings'}</a>
+          <a onClick={() => setView('help')} className={`nav-link ${view === 'help' ? 'active' : ''}`}><span>❓</span> {!isSidebarCollapsed && 'Help'}</a>
         </nav>
 
         {!isSidebarCollapsed && (
-          <div className="theme-toggle" style={{ marginTop: 'auto', marginBottom: '1.5rem' }}>
+          <div className="voice-toggle" style={{ marginTop: 'auto', marginBottom: '1rem', padding: '0 1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: '0.85rem' }}>
+              <span>Voice Response</span>
+              <input type="checkbox" checked={voiceEnabled} onChange={() => setVoiceEnabled(!voiceEnabled)} />
+            </label>
+          </div>
+        )}
+
+        {!isSidebarCollapsed && (
+          <div className="theme-toggle" style={{ marginBottom: '1.5rem' }}>
             <div className="toggle-btn active">☀️ Light</div>
             <div className="toggle-btn">🌙 Dark</div>
           </div>
@@ -169,7 +228,18 @@ function App() {
             </button>
           )}
         </div>
-      </aside>
+      </>
+    )
+  }
+
+  return (
+    <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        {isMenuOpen ? '✕' : '☰'}
+      </button>
+
+      {/* ── LEFT SIDEBAR ── */}
+      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>{renderSidebar()}</aside>
 
       {/* ── MAIN CONTENT ── */}
       <main className="main-content">
@@ -260,7 +330,7 @@ function App() {
               <div className="action-buttons" style={{ color: '#000', fontWeight: 500 }}>
                 <span className="action-btn" onClick={() => startNewConversation()}>⚡ New Conversation</span>
                 <span className="action-btn">📎 Attach</span>
-                <span className="action-btn">🎙️ Voice Message</span>
+                <span className="action-btn" onClick={handleVoiceInput}>{isListening ? '🔴 Listening...' : '🎙️ Voice Message'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
                 <span>{inputPrompt.length}/3,000</span>

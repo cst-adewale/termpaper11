@@ -1,0 +1,75 @@
+# Eleven Medical AI - Project Summary
+
+## Project Overview
+Eleven Medical AI is a React-based diagnostic application that leverages Bayesian Belief Networks (BBN) to assess respiratory health risks. The application simulates a doctor-patient consultation where the AI interviews the user about symptoms (e.g., smoking, cough, fever) and calculates the probability of conditions like Lung Cancer and Pneumonia in real-time.
+
+## Key Features
+1.  **Bayesian Diagnostic Engine**: Uses `jsbayes` to model causal relationships between symptoms and diseases. It handles uncertainty and updates probabilities dynamically as new evidence is provided.
+2.  **Interactive Chat Interface**: A conversational UI that guides the user through the diagnostic process.
+3.  **Voice Interaction**:
+    *   **Text-to-Speech (TTS)**: The AI speaks its responses using the Web Speech API (specifically selecting a British accent if available).
+    *   **Speech-to-Text (STT)**: Users can input symptoms via voice messages.
+4.  **Real-time Assessment**: A sidebar dashboard that visualizes the risk probabilities as percentages and progress bars.
+5.  **New Modules**: Settings, Help (with educational content on Bayesian logic), and Documents management.
+
+## Technical Architecture
+*   **Frontend**: React (Vite), CSS3 (Custom properties for theming).
+*   **Logic**: Custom `doctorLogic.js` module integrating `jsbayes`.
+*   **State Management**: React `useState` and `useEffect` for handling chat history, evidence collecting, and view switching.
+
+## Important Code Snippets
+
+### 1. Bayesian Network Definition (`src/logic/doctorLogic.js`)
+This snippet shows how the medical knowledge is structured as a graph.
+```javascript
+const createDoctorBrain = () => {
+    const g = jsbayes.newGraph();
+    // Define Nodes: Variables in the network
+    const smoking = g.addNode('smoking', ['yes', 'no']);
+    const lungCancer = g.addNode('cancer', ['yes', 'no']);
+    
+    // Define Causal Links: Smoking causes Lung Cancer
+    lungCancer.addParent(smoking);
+    
+    // Define Probability Table (CPT): Hard medical data
+    lungCancer.setCpt([
+        [0.15, 0.85], // 15% risk if Smoker
+        [0.01, 0.99]  // 1% risk if Non-smoker
+    ]);
+    return g;
+};
+```
+
+### 2. Next Question Logic (Entropy-based)
+The AI doesn't ask questions randomly; it calculates which question reduces uncertainty the most (Information Entropy).
+```javascript
+export const getNextQuestion = (evidence) => {
+    // Check all potential symptoms not yet asked
+    // Calculate entropy for each to find the most informative one
+    symptoms.forEach(s => {
+        if (!(s in evidence)) {
+            const entropy = calculateEntropy(node);
+            if (entropy > maxEntropy) {
+                bestNode = s; // This becomes the next question
+            }
+        }
+    });
+    return bestNode;
+};
+```
+
+### 3. Voice Output Implementation (`src/App.jsx`)
+How the application speaks to the user.
+```javascript
+const speak = (text) => {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Attempt to find a British voice for the persona
+    const britishVoice = window.speechSynthesis.getVoices().find(v => v.lang === 'en-GB');
+    if (britishVoice) utterance.voice = britishVoice;
+    window.speechSynthesis.speak(utterance);
+}
+```
+
+## Conclusion
+This project demonstrates the effective combination of modern web technologies with probabilistic AI models to create an accessible and educational health assessment tool.
