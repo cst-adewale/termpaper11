@@ -44,6 +44,7 @@ const Layout = () => {
 
     return (
         <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <div className={`sidebar-overlay ${isMenuOpen ? 'active' : ''}`} onClick={() => setIsMenuOpen(false)}></div>
             <button className="mobile-menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                 {isMenuOpen ? '✕' : '☰'}
             </button>
@@ -141,51 +142,66 @@ const Layout = () => {
 
                 {/* SHARED INPUT AREA - Always at bottom */}
                 {(location.pathname === '/' || location.pathname === '/chat') && (
-                    <div className="input-section" style={{ width: '100%' }}>
-                        <div className="input-box" style={{ margin: '0 auto' }}>
-                            <textarea
-                                placeholder="Summarize the latest"
-                                rows={1}
-                                value={inputPrompt}
-                                onChange={(e) => setInputPrompt(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), navigate('/chat'), handleSendMessage())}
-                            />
-                            <div className="input-actions" style={{ marginBottom: '0.5rem' }}>
-                                <div className="action-buttons" style={{ color: '#000', fontWeight: 500 }}>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        style={{ display: 'none' }}
-                                        onChange={(e) => { navigate('/chat'); handleFileUpload(e); }}
-                                        accept=".pdf,.docx,.doc"
-                                    />
-                                    <span className="action-btn" onClick={() => fileInputRef.current.click()}>📎 Attach</span>
-                                    <span className="action-btn" onClick={() => { navigate('/chat'); handleVoiceInput(); }}>{isListening ? '🔴 Listening...' : '🎙️ Voice Message'}</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
-                                    <span>{inputPrompt.length}/3,000</span>
-                                    <button
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            background: inputPrompt.trim() ? 'var(--accent)' : '#eaecf0',
-                                            borderRadius: '50%',
-                                            border: 'none',
-                                            display: 'grid',
-                                            placeItems: 'center',
-                                            color: '#fff',
-                                            cursor: inputPrompt.trim() ? 'pointer' : 'default',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        disabled={!inputPrompt.trim()}
-                                        onClick={() => { navigate('/chat'); handleSendMessage(); }}
-                                    >
-                                        ↑
-                                    </button>
+                    <>
+                        <div className="input-section" style={{ width: '100%' }}>
+                            <div className="input-box" style={{ margin: '0 auto' }}>
+                                <textarea
+                                    placeholder="Summarize the latest"
+                                    rows={1}
+                                    value={inputPrompt}
+                                    onChange={(e) => setInputPrompt(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), navigate('/chat'), handleSendMessage())}
+                                />
+                                <div className="input-actions" style={{ marginBottom: '0.5rem' }}>
+                                    <div className="action-buttons" style={{ color: '#000', fontWeight: 500 }}>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => { navigate('/chat'); handleFileUpload(e); }}
+                                            accept=".pdf,.docx,.doc"
+                                        />
+                                        <span className="action-btn" onClick={() => fileInputRef.current.click()}>📎 Attach</span>
+                                        <span className="action-btn" onClick={() => { navigate('/chat'); handleVoiceInput(); }}>{isListening ? '🔴 Listening...' : '🎙️ Voice Message'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                                        <span>{inputPrompt.length}/3,000</span>
+                                        <button
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                background: inputPrompt.trim() ? 'var(--accent)' : '#eaecf0',
+                                                borderRadius: '50%',
+                                                border: 'none',
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                color: '#fff',
+                                                cursor: inputPrompt.trim() ? 'pointer' : 'default',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            disabled={!inputPrompt.trim()}
+                                            onClick={() => { navigate('/chat'); handleSendMessage(); }}
+                                        >
+                                            ↑
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        {/* Mobile Only Quick Summary */}
+                        <div className="mobile-assessment-summary">
+                            {[
+                                { name: 'Cancer', val: diagnosis.cancer, color: '#dc3545' },
+                                { name: 'Pneumonia', val: diagnosis.pneumonia, color: '#32CD32' },
+                                { name: 'COVID-19', val: diagnosis.covid, color: '#00BFFF' }
+                            ].map(d => (
+                                <div key={d.name} style={{ background: '#fff', padding: '0.5rem 1rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color }}></div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{d.name}: {Math.round(d.val)}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </main>
 
