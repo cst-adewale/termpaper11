@@ -2,13 +2,25 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import './Auth.css'
 
-export default function Auth() {
+export default function Auth({ onGuestLogin }) {
     const [loading, setLoading] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [displayName, setDisplayName] = useState('')
     const [isSignUp, setIsSignUp] = useState(false)
     const [error, setError] = useState(null)
+
+    const handleGuestLogin = () => {
+        if (onGuestLogin) {
+            onGuestLogin({
+                user: {
+                    id: 'guest-user-123',
+                    email: 'guest@eleven.ai',
+                    user_metadata: { full_name: 'Guest User' }
+                }
+            })
+        }
+    }
 
     const handleAuth = async (e) => {
         e.preventDefault()
@@ -27,6 +39,8 @@ export default function Auth() {
                     }
                 })
                 if (error) throw error
+                // Check if sign up requires email confirmation - often it does
+                // But if we want to auto-login, we might need to handle session
                 alert('Check your email for the confirmation link!')
             } else {
                 const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -97,6 +111,15 @@ export default function Auth() {
                     <button onClick={() => setIsSignUp(!isSignUp)} className="auth-toggle">
                         {isSignUp ? 'Sign In' : 'Sign Up'}
                     </button>
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                        <button
+                            type="button"
+                            onClick={handleGuestLogin}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline' }}
+                        >
+                            Continue as Guest (Demo)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

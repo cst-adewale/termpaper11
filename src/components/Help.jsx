@@ -2,45 +2,83 @@ import React from 'react';
 
 const Help = () => {
     return (
-        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', color: 'var(--text-primary)' }}>
-            <h1 style={{ marginBottom: '1.5rem' }}>Help & Guide</h1>
+        <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto', color: 'var(--text-primary)' }}>
+            <h1 style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                Eleven Medical AI - System Documentation
+            </h1>
 
-            <section style={{ marginBottom: '2.5rem' }}>
-                <h2>Getting Started</h2>
-                <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-                    Welcome to Eleven Medical AI. This application helps assess respiratory health risks using advanced Bayesian probabilistic modeling.
+            <section style={{ marginBottom: '3rem' }}>
+                <h2>1. Project Overview</h2>
+                <p>
+                    <strong>Eleven Medical AI</strong> is a next-generation diagnostic assistant designed to simulate a doctor-patient consultation.
+                    It leverages <strong>Bayesian Belief Networks (BBN)</strong> to handle uncertainty in medical diagnosis, providing probabilistic assessments based on observed symptoms.
                 </p>
-                <ol style={{ paddingLeft: '1.5rem', marginTop: '1rem', lineHeight: '1.8' }}>
-                    <li><strong>Sign Up/Login:</strong> Create an account to save your history.</li>
-                    <li><strong>Start a Chat:</strong> Tell the AI about your symptoms (e.g., "I have a cough").</li>
-                    <li><strong>Answer Questions:</strong> The AI will ask specific follow-up questions to refine its diagnosis.</li>
-                    <li><strong>View Results:</strong> Real-time probabilities for conditions effectively update in the sidebar.</li>
+                <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid var(--accent)', marginTop: '1rem' }}>
+                    <strong>Core Philosophy:</strong> Unlike rigid "if-then" rule-based systems, Eleven thinks in probabilities. It understands that "Cough" increases the <em>likelihood</em> of "Pneumonia" but doesn't guarantee it.
+                </div>
+            </section>
+
+            <section style={{ marginBottom: '3rem' }}>
+                <h2>2. Key Features</h2>
+                <ul style={{ lineHeight: '1.8', listStyleType: 'disc', paddingLeft: '1.5rem' }}>
+                    <li><strong>Conversational Diagnostic Interface:</strong> A natural language chat system where users describe their symptoms.</li>
+                    <li><strong>Probabilistic Reasoning Engine:</strong> Real-time calculation of disease risks (e.g., Lung Cancer, Pneumonia) using `jsbayes`.</li>
+                    <li><strong>Adaptive Interviewing:</strong> The AI calculates "Information Entropy" to ask the <em>most relevant</em> next question, reducing the number of questions needed for a diagnosis.</li>
+                    <li><strong>Voice Interaction:</strong>
+                        <ul>
+                            <li><strong>Speech-to-Text:</strong> Dictate symptoms directly using the microphone.</li>
+                            <li><strong>Text-to-Speech:</strong> The AI responds with a human-like voice (British English locale).</li>
+                        </ul>
+                    </li>
+                    <li><strong>Document Intelligence:</strong> (New) Upload medical reports (PDF/Video). The system scans for keywords to automatically populate clinical evidence.</li>
+                    <li><strong>Persistent History:</strong> Chat sessions are saved to the server, allowing users to review past consultations.</li>
+                </ul>
+            </section>
+
+            <section style={{ marginBottom: '3rem' }}>
+                <h2>3. Technical Architecture</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    <div>
+                        <h3>Frontend</h3>
+                        <p>Built with <strong>React 19 & Vite</strong> for high performance.</p>
+                        <p><strong>State Management:</strong> React Hooks (useState, useEffect) manage the complex interaction between the Chat UI and the Bayesian Logic.</p>
+                    </div>
+                    <div>
+                        <h3>Backend & Storage</h3>
+                        <p><strong>Supabase:</strong> Provides authentication, database (PostgreSQL), and file storage.</p>
+                        <p><strong>Row Level Security (RLS):</strong> Ensures users can only access their own private medical data.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section style={{ marginBottom: '3rem' }}>
+                <h2>4. The Bayesian Engine (How it Works)</h2>
+                <p>The "Brain" of Eleven is defined in <code>doctorLogic.js</code>.</p>
+                <ol style={{ marginTop: '1rem', paddingLeft: '1.5rem' }}>
+                    <li style={{ marginBottom: '1rem' }}>
+                        <strong>Graph Definition:</strong> We define nodes (e.g., <em>Smoking</em>, <em>Cancer</em>) and directed edges (<em>Smoking &rarr; Cancer</em>).
+                    </li>
+                    <li style={{ marginBottom: '1rem' }}>
+                        <strong>CPTs (Conditional Probability Tables):</strong> We define the statistical rules. Example:
+                        <br />
+                        <code>P(Cancer | Smoker) = 0.15</code> vs <code>P(Cancer | Non-Smoker) = 0.01</code>.
+                    </li>
+                    <li style={{ marginBottom: '1rem' }}>
+                        <strong>Inference:</strong> When you provide evidence (e.g., "I smoke"), the engine re-samples the network to update the posterior probability of all diseases.
+                    </li>
                 </ol>
             </section>
 
-            <section style={{ marginBottom: '2.5rem' }}>
-                <h2>How the Bayesian Engine Works</h2>
-                <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <p style={{ marginBottom: '1rem' }}>
-                        The core of this application is a <strong>Bayesian Belief Network</strong> (BBN). Unlike standard rule-based systems, a BBN deals with <em>uncertainty</em> using probability theory.
-                    </p>
+            <section style={{ marginBottom: '3rem' }}>
+                <h2>5. User Guide</h2>
+                <h3>Starting a Check</h3>
+                <p>Simply type "Start" or click the "Symptom Check" card. The AI will begin by asking about risk factors.</p>
 
-                    <h3 style={{ fontSize: '1.1rem', marginTop: '1.5rem' }}>1. Nodes & Edges</h3>
-                    <p>The network consists of <strong>Nodes</strong> (Variables like <em>Smoking</em>, <em>Lung Cancer</em>, <em>Cough</em>) and <strong>Edges</strong> (Causal arrows, e.g., <em>Smoking induces Lung Cancer</em>).</p>
+                <h3>Uploading Documents</h3>
+                <p>Click the <strong>Paperclip (📎)</strong> icon to upload a medical report. The system will scan it for known keywords like "Fever", "Abnormal X-ray", etc., and update your diagnosis automatically.</p>
 
-                    <h3 style={{ fontSize: '1.1rem', marginTop: '1.5rem' }}>2. Inference (The "Thinking" Process)</h3>
-                    <p>
-                        When you say "I smoke", we treat this as <strong>Evidence</strong>. The algorithm then propagates this information through the network to update the probability of hidden nodes (like <em>Lung Cancer</em>).
-                    </p>
-                    <code style={{ display: 'block', background: '#2d2d2d', color: '#fff', padding: '1rem', borderRadius: '8px', marginTop: '1rem', fontSize: '0.85rem' }}>
-                        P(Disease | Symptoms) = [P(Symptoms | Disease) * P(Disease)] / P(Symptoms)
-                    </code>
-
-                    <h3 style={{ fontSize: '1.1rem', marginTop: '1.5rem' }}>3. Entropy & Next Question</h3>
-                    <p>
-                        To decide what to ask next, the AI calculates the <strong>Information Entropy</strong> of all unknown nodes. It selects the question that will provide the most information gain (reduce uncertainty the most).
-                    </p>
-                </div>
+                <h3>Voice Commands</h3>
+                <p>Click the <strong>Microphone (🎙️)</strong> button. Speak clearly. The system will transcribe your speech and process it as a chat message.</p>
             </section>
         </div>
     );

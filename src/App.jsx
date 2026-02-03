@@ -6,6 +6,9 @@ import { supabase } from './supabase'
 import Settings from './components/Settings'
 import Help from './components/Help'
 import Documents from './components/Documents'
+import newConvIcon from './assets/new_conversation_icon.png'
+import { createSession, saveMessage, loadHistory, loadMessages, updateSessionSummary } from './logic/historyManager'
+import { parseDocument, scanForSymptoms } from './logic/documentParser'
 import './App.css'
 
 function App() {
@@ -23,6 +26,8 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [currentSessionId, setCurrentSessionId] = useState(null)
+  const fileInputRef = useRef(null)
 
   const chatEndRef = useRef(null)
   const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -39,6 +44,17 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Load history when session is available
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadHistory(session.user.id).then(hist => setHistory(hist || []))
+      // Create initial session if none
+      if (!currentSessionId) {
+        createSession(session.user.id).then(id => setCurrentSessionId(id))
+      }
+    }
+  }, [session])
+
   useEffect(() => scrollToBottom(), [messages])
 
   const handleActionClick = (text) => {
@@ -46,9 +62,10 @@ function App() {
     setIsMenuOpen(false)
   }
 
-  const startNewConversation = () => {
-    if (messages.length > 1) {
-      setHistory(prev => [{ id: Date.now(), messages: [...messages], date: new Date().toLocaleDateString() }, ...prev])
+  const startNewConversation = async () => {
+    if (session?.user?.id) {
+      const newId = await createSession(session.user.id)
+      setCurrentSessionId(newId)
     }
     setMessages([{ role: 'bot', text: "Hello, I am Eleven. I'm here to help analyze your symptoms. What are you feeling today?" }])
     setEvidence({})
@@ -64,6 +81,41 @@ function App() {
     const britishVoice = voices.find(v => v.lang === 'en-GB') || voices[0]
     if (britishVoice) utterance.voice = britishVoice
     window.speechSynthesis.speak(utterance)
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    try {
+      const text = await parseDocument(file)
+      const findings = scanForSymptoms(text)
+
+      const findingsText = Object.keys(findings).length > 0
+        ? `I've analyzed ${file.name}. Found indications of: ${Object.keys(findings).join(', ')}.`
+        : `I've read ${file.name} but didn't find specific risk factors. Tell me more.`
+
+      const botMsg = { role: 'bot', text: findingsText }
+      setMessages(prev => [...prev, botMsg])
+      if (currentSessionId) saveMessage(currentSessionId, 'bot', findingsText)
+      speak(findingsText)
+
+      if (Object.keys(findings).length > 0) {
+        setEvidence(prev => ({ ...prev, ...findings }))
+        updateInference({ ...evidence, ...findings }).then(res => setDiagnosis(res))
+      }
+    } catch (err) {
+      alert("Error parsing document: " + err.message)
+    }
+  }
+
+  const loadSession = async (sessId) => {
+    const msgs = await loadMessages(sessId)
+    if (msgs && msgs.length > 0) {
+      setMessages(msgs.map(m => ({ role: m.role, text: m.text, node: m.node })))
+      setCurrentSessionId(sessId)
+      setView('chat')
+    }
   }
 
   const handleVoiceInput = () => {
@@ -108,7 +160,13 @@ function App() {
     }
 
     // Add user message to UI
-    setMessages(prev => [...prev, { role: 'user', text }])
+    const userMsg = { role: 'user', text }
+    setMessages(prev => [...prev, userMsg])
+    if (currentSessionId) {
+      saveMessage(currentSessionId, 'user', text)
+      // Update summary if it's the first real user message (2nd total)
+      if (messages.length === 1) updateSessionSummary(currentSessionId, text)
+    }
 
     // Trigger start if requested or if it's the first interaction
     const normalized = text.toLowerCase()
@@ -165,7 +223,7 @@ function App() {
   }
 
   if (!session) {
-    return <Auth />
+    return <Auth onGuestLogin={(guestSession) => setSession(guestSession)} />
   }
 
   if (view === 'dashboard') return <Dashboard symptoms={evidence} diagnosis={[]} onBack={() => setView('chat')} />
@@ -194,19 +252,12 @@ function App() {
   function renderSidebar() {
     return (
       <>
-        <div className="logo-section">
+        <div className="logo-section" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} style={{ cursor: 'pointer' }}>
           <div className="logo-pause-small">
             <div className="bar"></div>
             <div className="bar"></div>
           </div>
           {!isSidebarCollapsed && <h1 style={{ fontSize: '1.25rem' }}>Eleven</h1>}
-          <div
-            className="sidebar-toggle-btn"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            style={{ marginLeft: 'auto', cursor: 'pointer', fontSize: '1.2rem' }}
-          >
-            {isSidebarCollapsed ? '📂' : '⇤'}
-          </div>
         </div>
 
         {!isSidebarCollapsed && (
@@ -217,15 +268,18 @@ function App() {
         )}
 
         <nav className="sidebar-nav">
-          <a onClick={() => setView('chat')} className={`nav-link ${view === 'chat' ? 'active' : ''}`}><span>💬</span> {!isSidebarCollapsed && 'AI Chat'}</a>
-          <a onClick={() => setView('documents')} className={`nav-link ${view === 'documents' ? 'active' : ''}`}><span>📄</span> {!isSidebarCollapsed && 'Documents'}</a>
+          <a onClick={() => setView('chat')} className={`nav-link ${view === 'chat' ? 'active' : ''}`}>
+            <img src={newConvIcon} alt="New" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+            {!isSidebarCollapsed && 'New Conversation'}
+          </a>
+          <a onClick={() => setView('documents')} className={`nav-link ${view === 'documents' ? 'active' : ''}`}><span>📂</span> {!isSidebarCollapsed && 'Documents'}</a>
           <a onClick={() => setView('history')} className={`nav-link ${view === 'history' ? 'active' : ''}`}><span>🕒</span> {!isSidebarCollapsed && 'History'}</a>
 
           {!isSidebarCollapsed && history.length > 0 && (
             <div className="history-list" style={{ marginTop: '0.5rem', paddingLeft: '2rem' }}>
               {history.map(item => (
-                <div key={item.id} className="history-item" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', cursor: 'pointer' }}>
-                  Consultation {item.date}
+                <div key={item.id} onClick={() => loadSession(item.id)} className="history-item" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.summary || 'Consultation ' + new Date(item.created_at).toLocaleDateString()}
                 </div>
               ))}
             </div>
@@ -282,7 +336,16 @@ function App() {
       </button>
 
       {/* ── LEFT SIDEBAR ── */}
-      <aside className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>{renderSidebar()}</aside>
+      <aside
+        className={`left-sidebar ${isMenuOpen ? 'mobile-open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}
+        onClick={(e) => {
+          if (isSidebarCollapsed && !e.target.closest('.logo-section')) {
+            setIsSidebarCollapsed(false)
+          }
+        }}
+      >
+        {renderSidebar()}
+      </aside>
 
       {/* ── MAIN CONTENT ── */}
       <main className="main-content">
@@ -372,8 +435,14 @@ function App() {
             />
             <div className="input-actions" style={{ marginBottom: '0.5rem' }}>
               <div className="action-buttons" style={{ color: '#000', fontWeight: 500 }}>
-                <span className="action-btn" onClick={() => startNewConversation()}>⚡ New Conversation</span>
-                <span className="action-btn">📎 Attach</span>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                  accept=".pdf,.docx,.doc"
+                />
+                <span className="action-btn" onClick={() => fileInputRef.current.click()}>📎 Attach</span>
                 <span className="action-btn" onClick={handleVoiceInput}>{isListening ? '🔴 Listening...' : '🎙️ Voice Message'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
