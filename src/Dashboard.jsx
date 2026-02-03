@@ -1,7 +1,18 @@
-import { useState } from 'react'
+import { useApp } from './context/AppContext'
 import './Dashboard.css'
 
-function Dashboard({ symptoms, diagnosis, onBack }) {
+function Dashboard({ onBack }) {
+  const { evidence, diagnosis } = useApp()
+
+  const mappedDiagnosis = [
+    { id: 1, name: 'Lung Cancer', prob: diagnosis.cancer, risk: diagnosis.cancer > 15 ? 'high' : 'low' },
+    { id: 2, name: 'Pneumonia', prob: diagnosis.pneumonia, risk: diagnosis.pneumonia > 15 ? 'high' : 'low' },
+    { id: 3, name: 'COVID-19', prob: diagnosis.covid, risk: diagnosis.covid > 15 ? 'high' : 'low' },
+    { id: 4, name: 'TB', prob: diagnosis.tb, risk: diagnosis.tb > 15 ? 'high' : 'low' },
+    { id: 5, name: 'Bronchitis', prob: diagnosis.bronchitis, risk: diagnosis.bronchitis > 15 ? 'high' : 'low' },
+    { id: 6, name: 'Flu', prob: diagnosis.flu, risk: diagnosis.flu > 15 ? 'high' : 'low' },
+  ]
+
   return (
     <div className="v1-dashboard-overlay">
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -15,16 +26,17 @@ function Dashboard({ symptoms, diagnosis, onBack }) {
       <div className="dashboard-grid">
         <aside className="glass-card" style={{ padding: '1.5rem' }}>
           <h2 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>SYMPTOMS</h2>
-          {Object.entries(symptoms).map(([key, value]) => (
-            <div key={key} className={`symptom-item ${value ? 'active' : ''}`}>
+          {Object.entries(evidence).map(([key, value]) => (
+            <div key={key} className={`symptom-item active`}>
               <span style={{ textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1')}</span>
-              <span style={{ color: value ? 'var(--brand-primary)' : 'inherit' }}>{value ? 'YES' : 'NO'}</span>
+              <span style={{ color: 'var(--brand-primary)' }}>{String(value).toUpperCase()}</span>
             </div>
           ))}
+          {Object.keys(evidence).length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No evidence collected yet.</p>}
         </aside>
 
         <main className="diagnosis-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-          {diagnosis.map((item) => (
+          {mappedDiagnosis.map((item) => (
             <div key={item.id} className="diagnosis-card glass-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
