@@ -22,7 +22,9 @@ function App() {
   const [evidence, setEvidence] = useState({})
   const [diagnosis, setDiagnosis] = useState({ cancer: 0, pneumonia: 0 })
   const [isFinishing, setIsFinishing] = useState(false)
+
   const [inputPrompt, setInputPrompt] = useState('')
+  const [showHero, setShowHero] = useState(true)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -71,7 +73,9 @@ function App() {
     setEvidence({})
     setDiagnosis({ cancer: 0, pneumonia: 0 })
     setIsFinishing(false)
+
     setInputPrompt('')
+    setShowHero(false)
   }
 
   const speak = (text) => {
@@ -268,7 +272,7 @@ function App() {
         )}
 
         <nav className="sidebar-nav">
-          <a onClick={() => setView('chat')} className={`nav-link ${view === 'chat' ? 'active' : ''}`}>
+          <a onClick={() => { setView('chat'); startNewConversation(); }} className={`nav-link ${view === 'chat' ? 'active' : ''}`}>
             <img src={newConvIcon} alt="New" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
             {!isSidebarCollapsed && 'New Conversation'}
           </a>
@@ -350,7 +354,7 @@ function App() {
       {/* ── MAIN CONTENT ── */}
       <main className="main-content">
         <div className="chat-container">
-          {messages.length === 1 ? (
+          {showHero && messages.length === 1 ? (
             <div className="hero-section">
               <div className="logo-pause-large">
                 <div className="bar"></div>
