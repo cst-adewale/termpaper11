@@ -87,6 +87,50 @@ function App() {
     recognition.onend = () => setIsListening(false)
   }
 
+  const handleSendMessage = () => {
+    if (!inputPrompt.trim()) return
+    const text = inputPrompt.trim()
+    setInputPrompt('')
+
+    // Check if waiting for answer
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg.role === 'bot' && lastMsg.node && !isFinishing) {
+      // Simple NLP for Yes/No
+      const normalized = text.toLowerCase()
+      if (normalized.includes('yes') || normalized.includes('sure') || normalized.includes('yeah') || normalized.includes('abnormal')) {
+        handleResponse(lastMsg.node, lastMsg.node === 'xray' ? 'abnormal' : 'yes')
+        return
+      }
+      if (normalized.includes('no') || normalized.includes('nope') || normalized.includes('normal')) {
+        handleResponse(lastMsg.node, lastMsg.node === 'xray' ? 'normal' : 'no')
+        return
+      }
+    }
+
+    // Add user message to UI
+    setMessages(prev => [...prev, { role: 'user', text }])
+
+    // Trigger start if requested or if it's the first interaction
+    const normalized = text.toLowerCase()
+    if (messages.length === 1 || normalized.includes('start') || normalized.includes('symptom') || normalized.includes('check')) {
+      setTimeout(() => {
+        // If starting fresh
+        const initialMsg = "Have you started experiencing any symptoms recently? Let's check. Do you have a history of smoking?"
+        setMessages(prev => [...prev, { role: 'bot', text: initialMsg, node: 'smoking' }])
+        speak(initialMsg)
+        // Start tracking evidence if not already
+        if (Object.keys(evidence).length === 0) setEvidence({})
+      }, 500)
+    } else {
+      // Fallback response for unknown input
+      setTimeout(() => {
+        const fallback = "I'm listening. You can say 'Start' to begin a diagnosis, or answer 'Yes' / 'No' to my questions."
+        setMessages(prev => [...prev, { role: 'bot', text: fallback }])
+        speak(fallback)
+      }, 500)
+    }
+  }
+
   const handleResponse = async (nodeName, value) => {
     const newEvidence = { ...evidence, [nodeName]: value }
     setEvidence(newEvidence)
@@ -169,7 +213,6 @@ function App() {
           <div className="search-bar">
             <span style={{ marginRight: '8px' }}>🔍</span>
             <input type="text" placeholder="Search" style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem', borderRadius: '30px' }} />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>⌘K</span>
           </div>
         )}
 
@@ -251,7 +294,7 @@ function App() {
                 <div className="bar"></div>
               </div>
               <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>Welcome to Eleven</h1>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '3rem', fontSize: '1.1rem' }}>Get started by Script a task and Chat can do the rest. Not sure where to start?</p>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '3rem', fontSize: '1.1rem' }}>Start a consultation to analyze your symptoms using advanced Bayesian probability. Not sure where to begin?</p>
 
               <div className="quick-actions">
                 <div className="action-card" onClick={() => handleActionClick('Analyze my current respiratory symptoms')}>
@@ -325,6 +368,7 @@ function App() {
               rows={1}
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
             />
             <div className="input-actions" style={{ marginBottom: '0.5rem' }}>
               <div className="action-buttons" style={{ color: '#000', fontWeight: 500 }}>
@@ -348,6 +392,7 @@ function App() {
                     transition: 'all 0.2s'
                   }}
                   disabled={!inputPrompt.trim()}
+                  onClick={handleSendMessage}
                 >
                   ↑
                 </button>
