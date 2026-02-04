@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { loadHistory, createSession, saveMessage, updateSessionSummary } from '../logic/historyManager';
-import { getNextQuestion, updateInference } from '../logic/doctorLogic';
+import { initializeDoctorBrain, updateInference, getNextQuestion } from '../logic/doctorLogic';
 import { parseDocument, scanForSymptoms } from '../logic/documentParser';
 
 const AppContext = createContext();
@@ -17,6 +17,8 @@ export const AppProvider = ({ children }) => {
         cancer: 0, pneumonia: 0, covid: 0, tb: 0, bronchitis: 0, flu: 0,
         asthma: 0, heart_failure: 0, anemia: 0, emphysema: 0
     });
+
+    const [brainReady, setBrainReady] = useState(false);
     const [evidence, setEvidence] = useState({});
 
     // Chat State
@@ -31,6 +33,9 @@ export const AppProvider = ({ children }) => {
     const fileInputRef = useRef(null);
 
     useEffect(() => {
+        // Initialize Brain
+        initializeDoctorBrain().then(() => setBrainReady(true));
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
         });
